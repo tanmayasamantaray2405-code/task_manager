@@ -1,0 +1,378 @@
+<!-- auth.html -->
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+
+    <meta charset="UTF-8" />
+
+    <meta name="viewport"
+    content="width=device-width, initial-scale=1.0"/>
+
+    <title>TaskMaster - Authentication</title>
+cd 
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+    <!-- FONT AWESOME 6.5.1 -->
+
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+    <!-- BLOBS -->
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <!-- THEME TOGGLE -->
+
+    <div class="theme-toggle-wrapper">
+
+        <button id="themeToggleBtnAuth"
+        class="theme-toggle-btn">
+
+            <i class="fas fa-moon"></i>
+
+        </button>
+
+    </div>
+
+    <main class="auth-container split-layout">
+
+        <!-- LEFT SIDE -->
+
+        <div class="auth-welcome">
+
+            <div class="brand-logo">
+                <i class="fas fa-layer-group"></i>
+            </div>
+
+            <h1 class="glitch-text">
+                TaskMaster
+            </h1>
+
+            <div class="typing-container tagline">
+
+                <span id="typingTagline"></span>
+
+                <span class="cursor">|</span>
+
+            </div>
+
+            <div class="typing-container description">
+
+                <span id="typingDescription"></span>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDE -->
+
+        <div class="auth-perspective futuristic-border">
+
+            <div class="auth-card-inner"
+            id="authCardInner">
+
+                <!-- SIGNUP -->
+
+                <div class="glass-panel auth-front futuristic-panel">
+
+                    <div class="panel-content">
+
+                        <div class="auth-header">
+
+                            <h2>Create Account</h2>
+
+                            <p>
+                                Create your TaskMaster account
+                            </p>
+
+                        </div>
+
+                        <form id="signupForm"
+                        class="auth-form">
+
+                            <div class="form-group futuristic-group">
+
+                                <input
+                                type="text"
+                                id="signupName"
+                                class="form-control"
+                                placeholder=" "
+                                required>
+
+                                <label>Full Name</label>
+
+                            </div>
+
+                            <div class="form-group futuristic-group">
+
+                                <input
+                                type="email"
+                                id="signupEmail"
+                                class="form-control"
+                                placeholder=" "
+                                required>
+
+                                <label>Email Address</label>
+
+                            </div>
+
+                            <div class="form-group futuristic-group">
+
+                                <div class="password-wrapper">
+
+                                    <input
+                                    type="password"
+                                    id="signupPassword"
+                                    class="form-control"
+                                    placeholder=" "
+                                    required>
+
+                                    <label>Password</label>
+
+                                    <i class="fas fa-eye toggle-password"></i>
+
+                                </div>
+
+                            </div>
+
+                            <div class="form-group futuristic-group">
+
+                                <div class="password-wrapper">
+
+                                    <input
+                                    type="password"
+                                    id="confirmPassword"
+                                    class="form-control"
+                                    placeholder=" "
+                                    required>
+
+                                    <label>
+                                        Confirm Password
+                                    </label>
+
+                                    <i class="fas fa-eye toggle-password"></i>
+
+                                </div>
+
+                                <small
+                                id="passwordError"
+                                class="error-message"></small>
+
+                            </div>
+
+                            <small
+                            id="signupError"
+                            class="error-message"></small>
+
+                            <small
+                            id="signupSuccess"
+                            class="success-message"></small>
+
+                            <button
+                            type="submit"
+                            class="btn btn-neon">
+
+                                Sign Up
+
+                            </button>
+
+                        </form>
+
+                        <div class="auth-footer">
+
+                            <p>
+                                Already have an account?
+                                <a href="#"
+                                id="flipToSignIn">
+                                    Login
+                                </a>
+                            </p>
+
+                            <div class="social-divider">
+                                Or continue with
+                            </div>
+
+                            <div class="social-icons">
+
+                                <!-- GOOGLE -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="Google">
+
+                                    <i class="fab fa-google"></i>
+
+                                </button>
+
+                                <!-- GITHUB -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="GitHub">
+
+                                    <i class="fab fa-github"></i>
+
+                                </button>
+
+                                <!-- X / TWITTER -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="X">
+
+                                    <i class="fab fa-x-twitter"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- LOGIN -->
+
+                <div class="glass-panel auth-back futuristic-panel">
+
+                    <div class="panel-content">
+
+                        <div class="auth-header">
+
+                            <h2>Welcome Back</h2>
+
+                            <p>
+                                Login to continue
+                            </p>
+
+                        </div>
+
+                        <form id="loginForm"
+                        class="auth-form">
+
+                            <div class="form-group futuristic-group">
+
+                                <input
+                                type="email"
+                                id="loginEmail"
+                                class="form-control"
+                                placeholder=" "
+                                required>
+
+                                <label>Email Address</label>
+
+                            </div>
+
+                            <div class="form-group futuristic-group">
+
+                                <div class="password-wrapper">
+
+                                    <input
+                                    type="password"
+                                    id="loginPassword"
+                                    class="form-control"
+                                    placeholder=" "
+                                    required>
+
+                                    <label>Password</label>
+
+                                    <i class="fas fa-eye toggle-password"></i>
+
+                                </div>
+
+                            </div>
+
+                            <small
+                            id="loginError"
+                            class="error-message"></small>
+
+                            <button
+                            type="submit"
+                            class="btn btn-neon">
+
+                                Login
+
+                            </button>
+
+                        </form>
+
+                        <div class="auth-footer">
+
+                            <p>
+                                Don't have an account?
+                                <a href="#"
+                                id="flipToSignUp">
+                                    Sign Up
+                                </a>
+                            </p>
+
+                            <div class="social-divider">
+                                Or continue with
+                            </div>
+
+                            <div class="social-icons">
+
+                                <!-- GOOGLE -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="Google">
+
+                                    <i class="fab fa-google"></i>
+
+                                </button>
+
+                                <!-- GITHUB -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="GitHub">
+
+                                    <i class="fab fa-github"></i>
+
+                                </button>
+
+                                <!-- X -->
+
+                                <button
+                                class="social-btn"
+                                aria-label="X">
+
+                                    <i class="fab fa-x-twitter"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- TOAST -->
+
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>TaskMaster Dashboard</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dashboard-body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            <i class="fa-solid fa-cube"></i>
+            <span>TaskMaster</span>
+        </div>
+
+        <div class="sidebar-menu">
+
+            <div class="menu-item active">
+                <i class="fa-solid fa-gauge"></i>
+                <span>Dashboard</span>
+            </div>
+
+            <div class="menu-item">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Analytics</span>
+            </div>
+
+            <div class="menu-item">
+                <i class="fa-solid fa-file-export"></i>
+                <span>Export Report</span>
+            </div>
+
+            <div class="menu-item">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Productivity Score</span>
+            </div>
+
+        </div>
+
+        <button id="logoutBtn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Logout
+        </button>
+
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <div class="top-header">
+
+            <h1 class="welcome-heading" id="welcomeHeading">
+                Welcome, User
+            </h1>
+
+            <div class="header-right">
+
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+
+                <div class="user-avatar" id="userAvatar">U</div>
+
+            </div>
+
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+
+            <div class="glass-card stat-card">
+                <p>Total Tasks</p>
+                <h2 id="totalTasks">0</h2>
+            </div>
+
+            <div class="glass-card stat-card">
+                <p>In Progress</p>
+                <h2 id="inProgressTasks">0</h2>
+            </div>
+
+            <div class="glass-card stat-card">
+                <p>Completed</p>
+                <h2 id="completedTasks">0</h2>
+            </div>
+
+            <div class="glass-card stat-card">
+                <p>Overdue</p>
+                <h2 id="overdueTasks" class="overdue-text">0</h2>
+            </div>
+
+        </div>
+
+        <!-- NEW TASK BUTTON -->
+        <div class="task-btn-wrapper">
+            <button class="new-task-btn" id="newTaskBtn">
+                + New Task
+            </button>
+        </div>
+
+        <!-- TASK SECTION -->
+        <div class="tasks-section">
+
+            <div class="task-sidebar">
+
+                <h2>Your Tasks</h2>
+
+                <button class="filter-btn active" data-filter="all">All Tasks</button>
+                <button class="filter-btn" data-filter="high">High Priority</button>
+                <button class="filter-btn" data-filter="progress">In Progress</button>
+                <button class="filter-btn" data-filter="completed">Completed</button>
+
+            </div>
+
+            <div class="task-list-area">
+                <div id="taskList"></div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- MODAL -->
+    <div class="task-modal" id="taskModal">
+
+        <div class="task-modal-card">
+
+            <!-- CLOSE BUTTON -->
+            <button id="closeModalX" class="modal-close-x">×</button>
+
+            <h2>Add New Task</h2>
+
+            <form id="taskForm">
+
+                <input type="text" id="taskTitle" placeholder="Task Title *" required>
+
+                <textarea id="taskDescription" rows="3" placeholder="Task Description"></textarea>
+
+                <label>Due Date</label>
+                <input type="date" id="taskDate" required>
+
+                <label>Priority</label>
+                <select id="taskPriority">
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+
+                <label>Category</label>
+                <select id="taskCategory">
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Study">Study</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <div class="modal-actions">
+
+                    <button type="button" class="cancel-btn" id="cancelTaskBtn">
+                        Cancel
+                    </button>
+
+                    <button type="submit" class="add-btn">
+                        Add Task
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <script src="dashboard.js"></script>
+
+</body>
+</html>
