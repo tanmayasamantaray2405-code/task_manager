@@ -1,6 +1,10 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
 
+const allowedStatuses = ["Pending", "Completed"];
+const allowedPriorities = ["Low", "Medium", "High"];
+const allowedCategories = ["Work", "Study", "Personal", "Health"];
+
 const addTask = async (req, res, next) => {
   try {
     const {
@@ -9,7 +13,7 @@ const addTask = async (req, res, next) => {
       description = "",
       status = "Pending",
       priority = "Medium",
-      category = "Other",
+      category = "Personal",
       dueDate,
       date,
     } = req.body;
@@ -27,10 +31,25 @@ const addTask = async (req, res, next) => {
       throw new Error("Due date is required");
     }
 
+    if (!allowedStatuses.includes(status)) {
+      res.status(400);
+      throw new Error("Invalid task status");
+    }
+
+    if (!allowedPriorities.includes(priority)) {
+      res.status(400);
+      throw new Error("Invalid task priority");
+    }
+
+    if (!allowedCategories.includes(category)) {
+      res.status(400);
+      throw new Error("Invalid task category");
+    }
+
     const task = await Task.create({
-      user: req.user._id,
+      userId: req.user._id,
       title: taskTitle.trim(),
-      description,
+      description: description.trim(),
       status,
       priority,
       category,
@@ -50,11 +69,11 @@ const addTask = async (req, res, next) => {
 const getTasks = async (req, res, next) => {
   try {
     const { search, status, priority, category } = req.query;
-    const query = { user: req.user._id };
+    const query = { userId: req.user._id };
 
-    if (status) query.status = status;
-    if (priority) query.priority = priority;
-    if (category) query.category = category;
+    if (status && allowedStatuses.includes(status)) query.status = status;
+    if (priority && allowedPriorities.includes(priority)) query.priority = priority;
+    if (category && allowedCategories.includes(category)) query.category = category;
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -83,7 +102,7 @@ const getTask = async (req, res, next) => {
       throw new Error("Invalid task ID");
     }
 
-    const task = await Task.findOne({ _id: id, user: req.user._id });
+    const task = await Task.findOne({ _id: id, userId: req.user._id });
 
     if (!task) {
       res.status(404);
@@ -125,8 +144,31 @@ const updateTask = async (req, res, next) => {
     if (req.body.taskName !== undefined) updates.title = req.body.taskName;
     if (req.body.date !== undefined) updates.dueDate = req.body.date;
 
+    if (updates.title !== undefined) updates.title = updates.title.trim();
+    if (updates.description !== undefined) updates.description = updates.description.trim();
+
+    if (updates.status && !allowedStatuses.includes(updates.status)) {
+      res.status(400);
+      throw new Error("Invalid task status");
+    }
+
+    if (updates.priority && !allowedPriorities.includes(updates.priority)) {
+      res.status(400);
+      throw new Error("Invalid task priority");
+    }
+
+    if (updates.category && !allowedCategories.includes(updates.category)) {
+      res.status(400);
+      throw new Error("Invalid task category");
+    }
+
+    if (updates.title !== undefined && !updates.title) {
+      res.status(400);
+      throw new Error("Task title cannot be empty");
+    }
+
     const task = await Task.findOneAndUpdate(
-      { _id: id, user: req.user._id },
+      { _id: id, userId: req.user._id },
       updates,
       { new: true, runValidators: true }
     );
@@ -155,7 +197,7 @@ const deleteTask = async (req, res, next) => {
       throw new Error("Invalid task ID");
     }
 
-    const task = await Task.findOne({ _id: id, user: req.user._id });
+    const task = await Task.findOne({ _id: id, userId: req.user._id });
 
     if (!task) {
       res.status(404);

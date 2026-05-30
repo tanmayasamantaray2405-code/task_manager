@@ -1,0 +1,798 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+  <category>
+    <pattern>STUDY</pattern>
+    <template>Study for 2 hours</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>EXAM</pattern>
+    <template>Revise important exam topics</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>REVISION</pattern>
+    <template>Complete one focused revision session</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>ASSIGNMENT</pattern>
+    <template>Finish pending assignment work</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>HOMEWORK</pattern>
+    <template>Complete homework before deadline</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>READ</pattern>
+    <template>Read for 30 minutes</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>NOTES</pattern>
+    <template>Organize and review notes</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>GYM</pattern>
+    <template>Workout for 45 minutes</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>WORKOUT</pattern>
+    <template>Workout for 45 minutes</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>RUN</pattern>
+    <template>Go for a 20 minute run</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>WALK</pattern>
+    <template>Take a 30 minute walk</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>YOGA</pattern>
+    <template>Do a 20 minute yoga session</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>MEDITATION</pattern>
+    <template>Meditate for 10 minutes</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>WATER</pattern>
+    <template>Drink enough water today</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>MEDICINE</pattern>
+    <template>Take medicine on time</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>DOCTOR</pattern>
+    <template>Schedule a doctor appointment</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>CODING</pattern>
+    <template>Practice DSA for 1 hour</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>CODE</pattern>
+    <template>Practice DSA for 1 hour</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DSA</pattern>
+    <template>Practice DSA for 1 hour</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>BUG</pattern>
+    <template>Fix the highest priority bug</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DEBUG</pattern>
+    <template>Debug and document the issue</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DEPLOY</pattern>
+    <template>Prepare deployment checklist</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>EMAIL</pattern>
+    <template>Reply to important emails</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>REPORT</pattern>
+    <template>Prepare progress report</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>PRESENTATION</pattern>
+    <template>Create presentation draft</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>MEETING</pattern>
+    <template>Prepare meeting notes</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>PROJECT</pattern>
+    <template>Complete pending project module</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DEADLINE</pattern>
+    <template>Finish the urgent deadline task</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>PLAN</pattern>
+    <template>Plan top 3 priorities for today</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SCHEDULE</pattern>
+    <template>Update today's schedule</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>REMINDER</pattern>
+    <template>Set an important reminder</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>CALL</pattern>
+    <template>Make the pending phone call</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SHOPPING</pattern>
+    <template>Buy essential items</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>GROCERY</pattern>
+    <template>Buy groceries for the week</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>CLEAN</pattern>
+    <template>Clean and organize the room</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>LAUNDRY</pattern>
+    <template>Finish laundry today</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BILL</pattern>
+    <template>Pay pending bills</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BANK</pattern>
+    <template>Complete banking work</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BUDGET</pattern>
+    <template>Review monthly budget</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TRAVEL</pattern>
+    <template>Prepare travel checklist</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TICKET</pattern>
+    <template>Book or confirm tickets</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FAMILY</pattern>
+    <template>Spend quality time with family</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BIRTHDAY</pattern>
+    <template>Plan birthday wishes or gift</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>LEARN</pattern>
+    <template>Learn one new concept today</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>COURSE</pattern>
+    <template>Complete one course lesson</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>VIDEO</pattern>
+    <template>Watch one learning video</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>DESIGN</pattern>
+    <template>Finish design improvements</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>RESUME</pattern>
+    <template>Update resume with latest work</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>INTERVIEW</pattern>
+    <template>Prepare for interview questions</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>QUIZ</pattern>
+    <template>Practice quiz questions</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>TEST</pattern>
+    <template>Review test preparation checklist</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>LECTURE</pattern>
+    <template>Review lecture notes</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>CLASS</pattern>
+    <template>Prepare for the next class</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>TUTORIAL</pattern>
+    <template>Complete one tutorial exercise</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>RESEARCH</pattern>
+    <template>Research and summarize key points</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>BOOK</pattern>
+    <template>Read one chapter from the book</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>PRACTICE</pattern>
+    <template>Practice for 45 minutes</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>SUBMIT</pattern>
+    <template>Submit pending work before deadline</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>REVISION PLAN</pattern>
+    <template>Create a revision plan</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>CLIENT</pattern>
+    <template>Follow up with the client</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>TEAM</pattern>
+    <template>Share progress update with the team</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>REVIEW</pattern>
+    <template>Review pending work carefully</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DOCUMENTATION</pattern>
+    <template>Update project documentation</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>PR</pattern>
+    <template>Review open pull request</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>COMMIT</pattern>
+    <template>Commit completed changes</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>BACKUP</pattern>
+    <template>Create a backup of important files</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>DATABASE</pattern>
+    <template>Check database records and connection</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>API</pattern>
+    <template>Test API endpoints</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>UI</pattern>
+    <template>Polish UI interaction details</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>SLEEP</pattern>
+    <template>Sleep on time tonight</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>DIET</pattern>
+    <template>Plan a healthy meal</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>MEAL</pattern>
+    <template>Prepare a balanced meal</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>STRETCH</pattern>
+    <template>Stretch for 10 minutes</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>SKINCARE</pattern>
+    <template>Complete skincare routine</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>DENTIST</pattern>
+    <template>Book a dentist appointment</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>VACCINE</pattern>
+    <template>Check vaccine appointment details</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>CHECKUP</pattern>
+    <template>Schedule a health checkup</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>JOURNAL</pattern>
+    <template>Write a short journal entry</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>GOAL</pattern>
+    <template>Review progress on personal goals</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>HABIT</pattern>
+    <template>Track today's habit progress</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PASSWORD</pattern>
+    <template>Update important password securely</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DOCUMENT</pattern>
+    <template>Organize important documents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>INSURANCE</pattern>
+    <template>Review insurance details</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TAX</pattern>
+    <template>Prepare tax documents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>INVESTMENT</pattern>
+    <template>Review investment portfolio</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SAVINGS</pattern>
+    <template>Update savings tracker</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PAYMENT</pattern>
+    <template>Complete pending payment</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>RENT</pattern>
+    <template>Pay rent before due date</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>ELECTRICITY</pattern>
+    <template>Pay electricity bill</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>INTERNET</pattern>
+    <template>Pay internet bill</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>COOK</pattern>
+    <template>Cook a simple meal</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DISHES</pattern>
+    <template>Wash the dishes</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>ROOM</pattern>
+    <template>Organize the room</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WARDROBE</pattern>
+    <template>Organize wardrobe</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>CAR</pattern>
+    <template>Check car service needs</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BIKE</pattern>
+    <template>Check bike maintenance</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PASSPORT</pattern>
+    <template>Check passport or visa documents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>VISA</pattern>
+    <template>Prepare visa application documents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PACK</pattern>
+    <template>Pack essentials for travel</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>HOTEL</pattern>
+    <template>Confirm hotel booking</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FLIGHT</pattern>
+    <template>Check flight timing and documents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TRAIN</pattern>
+    <template>Check train ticket and timing</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>EVENT</pattern>
+    <template>Prepare for upcoming event</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>GIFT</pattern>
+    <template>Choose and buy a thoughtful gift</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FRIEND</pattern>
+    <template>Reconnect with a friend</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FOCUS</pattern>
+    <template>Do one focused deep work session</template>
+    <categoryName>Work</categoryName>
+  </category>
+  <category>
+    <pattern>PRIORITY</pattern>
+    <template>Pick the top priority task</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MORNING</pattern>
+    <template>Complete morning routine</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>NIGHT</pattern>
+    <template>Complete night routine</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BREAKFAST</pattern>
+    <template>Prepare breakfast</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>LUNCH</pattern>
+    <template>Plan or pack lunch</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DINNER</pattern>
+    <template>Prepare dinner</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SNACKS</pattern>
+    <template>Prepare healthy snacks</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>VEGETABLES</pattern>
+    <template>Buy fresh vegetables</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MILK</pattern>
+    <template>Buy milk and daily essentials</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PHARMACY</pattern>
+    <template>Pick up medicines from pharmacy</template>
+    <categoryName>Health</categoryName>
+  </category>
+  <category>
+    <pattern>APPOINTMENT</pattern>
+    <template>Confirm upcoming appointment</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SALON</pattern>
+    <template>Book salon appointment</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>HAIRCUT</pattern>
+    <template>Schedule haircut</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WASH</pattern>
+    <template>Wash pending clothes</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>IRON</pattern>
+    <template>Iron clothes for tomorrow</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FOLD</pattern>
+    <template>Fold and arrange clean clothes</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>BED</pattern>
+    <template>Make the bed</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FLOOR</pattern>
+    <template>Clean the floor</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DUST</pattern>
+    <template>Dust shelves and desk</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TRASH</pattern>
+    <template>Take out the trash</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>GAS</pattern>
+    <template>Check or book gas cylinder</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WIFI</pattern>
+    <template>Check WiFi or internet recharge</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MOBILE</pattern>
+    <template>Recharge mobile plan</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>RECHARGE</pattern>
+    <template>Complete pending recharge</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DELIVERY</pattern>
+    <template>Track pending delivery</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PACKAGE</pattern>
+    <template>Pick up or track package</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>RETURN</pattern>
+    <template>Return or exchange item</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>KEYS</pattern>
+    <template>Keep keys and wallet ready</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WALLET</pattern>
+    <template>Check wallet and important cards</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>ID CARD</pattern>
+    <template>Keep ID card ready</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SCHOOL</pattern>
+    <template>Prepare school or college bag</template>
+    <categoryName>Study</categoryName>
+  </category>
+  <category>
+    <pattern>BAG</pattern>
+    <template>Pack bag for tomorrow</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>UNIFORM</pattern>
+    <template>Keep uniform ready</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PARENT</pattern>
+    <template>Call or check in with parents</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MOM</pattern>
+    <template>Call mom</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>DAD</pattern>
+    <template>Call dad</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MARKET</pattern>
+    <template>Visit market for essentials</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>ERRAND</pattern>
+    <template>Finish pending errands</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TODAY</pattern>
+    <template>Plan today's main tasks</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>TOMORROW</pattern>
+    <template>Prepare tomorrow's task list</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WEEKEND</pattern>
+    <template>Plan weekend activities</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>MONTHLY</pattern>
+    <template>Review monthly responsibilities</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>SUBSCRIPTION</pattern>
+    <template>Review active subscriptions</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>CAR WASH</pattern>
+    <template>Schedule car wash</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FUEL</pattern>
+    <template>Refill fuel</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PARKING</pattern>
+    <template>Check parking payment or pass</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>REPAIR</pattern>
+    <template>Schedule repair work</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PLUMBER</pattern>
+    <template>Call plumber for repair</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>ELECTRICIAN</pattern>
+    <template>Call electrician for repair</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>AC</pattern>
+    <template>Schedule AC service</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>FRIDGE</pattern>
+    <template>Clean or check fridge items</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>PLANTS</pattern>
+    <template>Water the plants</template>
+    <categoryName>Personal</categoryName>
+  </category>
+  <category>
+    <pattern>WINDOW</pattern>
+    <template>Clean windows</template>
+    <categoryName>Personal</categoryName>
+  </category>
+</aiml>

@@ -141,26 +141,33 @@ document.addEventListener("DOMContentLoaded", () => {
             signupError.textContent = "";
             signupSuccess.textContent = "";
 
+            if (!name || !email || !password || !confirm) {
+                signupError.textContent = "Please fill in all fields";
+                return;
+            }
+
             if (password !== confirm) {
                 passwordError.textContent = "Passwords do not match";
                 return;
             }
 
             try {
-                const data = await request("/auth/register", {
+                const data = await request("/auth/signup", {
                     method: "POST",
-                    body: JSON.stringify({ name, email, password }),
+                    body: JSON.stringify({ name, email, password, confirmPassword: confirm }),
                 });
 
                 saveSession(data);
-                signupSuccess.textContent = "Account created! Please login";
+                showToast("Account created successfully");
+                signupSuccess.textContent = "Account created successfully";
                 signupForm.reset();
 
                 setTimeout(() => {
-                    authCardInner.classList.add("flipped");
-                }, 1200);
+                    window.location.href = "dashboard.html";
+                }, 900);
             } catch (error) {
                 signupError.textContent = error.message;
+                showToast(error.message, "error");
             }
         });
     }
@@ -188,10 +195,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 saveSession(data);
+                showToast("Login successful");
                 loginForm.reset();
-                window.location.href = "dashboard.html";
+                setTimeout(() => {
+                    window.location.href = "dashboard.html";
+                }, 500);
             } catch (error) {
                 loginError.textContent = error.message;
+                showToast(error.message, "error");
             }
         });
     }
@@ -224,9 +235,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // TOAST
     // =========================================
 
-    function showToast(message) {
+    function showToast(message, type = "success") {
         const toast = document.getElementById("toast");
 
+        toast.classList.remove("error");
+        if (type === "error") toast.classList.add("error");
         toast.textContent = message;
         toast.classList.add("show");
 

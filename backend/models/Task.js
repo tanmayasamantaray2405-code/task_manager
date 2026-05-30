@@ -2,10 +2,11 @@ const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     title: {
       type: String,
@@ -29,8 +30,8 @@ const taskSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["Work", "Personal", "Study", "Other"],
-      default: "Other",
+      enum: ["Work", "Study", "Personal", "Health"],
+      default: "Personal",
     },
     dueDate: {
       type: Date,
