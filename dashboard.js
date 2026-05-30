@@ -1,5 +1,8 @@
 const API_ROOT = "http://localhost:5000/api";
 const TASKS_API_URL = `${API_ROOT}/tasks`;
+const ANALYTICS_API_URL = `${TASKS_API_URL}/analytics`;
+const PRODUCTIVITY_API_URL = `${TASKS_API_URL}/productivity`;
+const EXPORT_API_URL = `${TASKS_API_URL}/export`;
 const AUTH_API_URL = `${API_ROOT}/auth`;
 const token = localStorage.getItem("token");
 const user = JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -35,7 +38,10 @@ let searchTerm = "";
 let categoryFilter = "";
 let priorityFilter = "";
 let statusFilter = "";
+let sortFilter = "created-desc";
 let aimlSuggestionRules = [];
+let analyticsData = null;
+let productivityData = null;
 
 const taskList = document.getElementById("taskList");
 const taskModal = document.getElementById("taskModal");
@@ -45,9 +51,12 @@ const taskDescriptionInput = document.getElementById("taskDescription");
 const taskDateInput = document.getElementById("taskDate");
 const taskPriorityInput = document.getElementById("taskPriority");
 const taskCategoryInput = document.getElementById("taskCategory");
+const taskRecurrenceInput = document.getElementById("taskRecurrence");
 
 ensureToast();
 createTaskControls();
+createDashboardModules();
+bindSidebarMenu();
 createSuggestionBox();
 loadAimlSuggestions();
 
@@ -71,6 +80,8 @@ taskForm.addEventListener("submit", async (e) => {
         dueDate: taskDateInput.value,
         priority: taskPriorityInput.value,
         category: taskCategoryInput.value,
+        recurrenceType: taskRecurrenceInput.value,
+        isRecurring: taskRecurrenceInput.value !== "None",
     };
 
     if (!task.title) {
@@ -100,17 +111,11 @@ async function loadTasks() {
     showTaskState("Loading tasks...");
 
     try {
-        const params = new URLSearchParams();
-        if (searchTerm) params.set("search", searchTerm);
-        if (categoryFilter) params.set("category", categoryFilter);
-        if (priorityFilter) params.set("priority", priorityFilter);
-        if (statusFilter) params.set("status", statusFilter);
-
-        const query = params.toString() ? `?${params.toString()}` : "";
-        const data = await apiRequest(`${TASKS_API_URL}${query}`);
+        const data = await apiRequest(TASKS_API_URL);
 
         tasks = data.tasks.map(formatTaskForDashboard);
         localStorage.setItem(backupKey, JSON.stringify(tasks));
+        await refreshDashboardData();
         renderTasks(currentFilter);
     } catch (error) {
         if (error.status === 401) {
@@ -120,6 +125,8 @@ async function loadTasks() {
 
         const cachedTasks = JSON.parse(localStorage.getItem(backupKey) || "[]");
         tasks = cachedTasks;
+        analyticsData = buildLocalAnalytics(tasks);
+        productivityData = buildLocalProductivity(tasks);
         renderTasks(currentFilter);
         showToast(`${error.message}. Showing local backup.`, "error");
     }
@@ -130,17 +137,50 @@ function formatTaskForDashboard(task) {
         id: task._id,
         title: task.title,
         description: task.description || "",
-        date: formatTaskDate(task.dueDate),
+        date: task.isRecurring ? formatTaskDate(new Date()) : formatTaskDate(task.dueDate),
+        dueDateRaw: task.dueDate,
         priority: task.priority,
         category: task.category,
         completed: task.status === "Completed",
         createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        completedAt: task.completedAt,
+        isRecurring: Boolean(task.isRecurring),
+        recurrenceType: task.recurrenceType || "None",
+        streak: task.streak || 0,
+        longestStreak: task.longestStreak || 0,
+        totalCompletions: task.totalCompletions || 0,
+        lastCompletedAt: task.lastCompletedAt,
+        completionHistory: task.completionHistory || [],
     };
 }
 
 function formatTaskDate(date) {
     if (!date) return "";
-    return new Date(date).toISOString().split("T")[0];
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "";
+
+    return new Intl.DateTimeFormat(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }).format(parsed);
+}
+
+function formatTaskDateTime(date) {
+    if (!date) return "Not available";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "Not available";
+
+    return new Intl.DateTimeFormat(undefined, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    }).format(parsed);
 }
 
 function escapeHTML(value = "") {
@@ -156,7 +196,7 @@ function escapeHTML(value = "") {
 function renderTasks(filter = "all") {
     taskList.innerHTML = "";
 
-    let filtered = [...tasks];
+    let filtered = getVisibleTasks();
 
     if (filter === "high") filtered = filtered.filter((task) => task.priority === "High");
     if (filter === "progress") filtered = filtered.filter((task) => !task.completed);
@@ -170,35 +210,177 @@ function renderTasks(filter = "all") {
         return;
     }
 
-    filtered.forEach((task) => {
-        const div = document.createElement("div");
-        div.className = "task-card";
+    const routineTasks = filtered.filter((task) => task.isRecurring);
+    const regularTasks = filtered.filter((task) => !task.isRecurring);
+    const activeTasks = regularTasks.filter((task) => !task.completed);
+    const completedTaskList = regularTasks.filter((task) => task.completed);
 
-        div.innerHTML = `
-        <div class="task-left">
-            <input type="checkbox" ${task.completed ? "checked" : ""}
-            onchange="toggleTask('${task.id}')">
-
-            <div>
-                <div class="task-title ${task.completed ? "completed-task" : ""}">
-                    ${escapeHTML(task.title)}
-                </div>
-                <div class="task-date">Due: ${task.date || "No date"} | ${escapeHTML(task.category)}</div>
-            </div>
-        </div>
-
-        <div class="task-right">
-            <span class="priority-badge ${task.priority.toLowerCase()}">
-                ${task.priority}
-            </span>
-            <i class="fa-solid fa-trash" onclick="deleteTask('${task.id}')"></i>
-        </div>
-        `;
-
-        taskList.appendChild(div);
-    });
+    if (filter === "completed") {
+        renderRoutineSection(routineTasks);
+        renderTaskSection("Completed Tasks", completedTaskList);
+    } else if (filter === "progress") {
+        renderRoutineSection(routineTasks);
+        renderTaskSection("", activeTasks);
+    } else {
+        renderRoutineSection(routineTasks);
+        renderTaskSection("", activeTasks);
+        if (completedTaskList.length) {
+            renderTaskSection("Completed Tasks", completedTaskList);
+        }
+    }
 
     updateStats();
+    renderDashboardModules();
+}
+
+function renderRoutineSection(routineTasks) {
+    if (!routineTasks.length) return;
+
+    const heading = document.createElement("h3");
+    heading.className = "task-section-title";
+    heading.textContent = "Daily Routine";
+    taskList.appendChild(heading);
+
+    routineTasks.forEach((task) => {
+        taskList.appendChild(createTaskCard(task));
+    });
+}
+
+function getVisibleTasks() {
+    let filtered = [...tasks];
+
+    if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter((task) =>
+            task.title.toLowerCase().includes(term) ||
+            task.description.toLowerCase().includes(term)
+        );
+    }
+
+    if (categoryFilter) filtered = filtered.filter((task) => task.category === categoryFilter);
+    if (priorityFilter) filtered = filtered.filter((task) => task.priority === priorityFilter);
+    if (statusFilter) filtered = filtered.filter((task) =>
+        statusFilter === "Completed" ? task.completed : !task.completed
+    );
+
+    return sortTasks(filtered);
+}
+
+function sortTasks(items) {
+    const priorityRank = { High: 3, Medium: 2, Low: 1 };
+    const sorted = [...items];
+
+    sorted.sort((a, b) => {
+        if (sortFilter === "date-asc") {
+            return new Date(a.dueDateRaw || 0) - new Date(b.dueDateRaw || 0);
+        }
+
+        if (sortFilter === "date-desc") {
+            return new Date(b.dueDateRaw || 0) - new Date(a.dueDateRaw || 0);
+        }
+
+        if (sortFilter === "priority-asc") {
+            return priorityRank[a.priority] - priorityRank[b.priority];
+        }
+
+        if (sortFilter === "priority-desc") {
+            return priorityRank[b.priority] - priorityRank[a.priority];
+        }
+
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+
+    return sorted;
+}
+
+function renderTaskSection(title, sectionTasks) {
+    if (!sectionTasks.length) return;
+
+    if (title) {
+        const heading = document.createElement("h3");
+        heading.className = "task-section-title";
+        heading.textContent = title;
+        taskList.appendChild(heading);
+    }
+
+    sectionTasks.forEach((task) => {
+        taskList.appendChild(createTaskCard(task));
+    });
+}
+
+function createTaskCard(task) {
+    const div = document.createElement("div");
+    div.className = "task-card";
+
+    div.innerHTML = `
+    <div class="task-left">
+        <input type="checkbox" ${task.completed ? "checked" : ""}
+        onchange="toggleTask('${task.id}')">
+
+        <div>
+            <div class="task-title ${task.completed ? "completed-task" : ""}">
+                ${escapeHTML(task.title)}
+            </div>
+            <div class="task-date">Due: ${escapeHTML(task.date || "No date")} | ${escapeHTML(task.category)}</div>
+            ${task.isRecurring ? getRoutineStatsHTML(task) : ""}
+        </div>
+    </div>
+
+    <div class="task-right">
+        <span class="priority-badge ${task.priority.toLowerCase()}">
+            ${escapeHTML(task.priority)}
+        </span>
+        <i class="fa-solid fa-trash" onclick="deleteTask('${task.id}')" title="Delete task permanently"></i>
+    </div>
+    `;
+
+    return div;
+}
+
+function getRoutineStatsHTML(task) {
+    return `
+        <div class="routine-meta">
+            <span>${escapeHTML(task.recurrenceType)} Routine</span>
+            <span>Status: ${task.completed ? "Completed Today" : "Pending Today"}</span>
+            <span>Current Streak: ${task.streak} Days</span>
+            <span>Longest Streak: ${task.longestStreak} Days</span>
+            <span>Total Completions: ${task.totalCompletions}</span>
+            <span>Completion: ${getRoutineCompletionPercentage(task)}%</span>
+        </div>
+    `;
+}
+
+function getRoutineCompletionPercentage(task) {
+    if (!task.isRecurring) return 0;
+
+    const start = new Date(task.createdAt || task.dueDateRaw);
+    const today = startOfToday();
+    if (Number.isNaN(start.getTime())) return 0;
+
+    start.setHours(0, 0, 0, 0);
+    let scheduledCount = 0;
+    const cursor = new Date(start);
+
+    while (cursor <= today) {
+        if (isRoutineScheduledForDate(task, cursor)) scheduledCount += 1;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return scheduledCount ? Math.round((task.totalCompletions / scheduledCount) * 100) : 0;
+}
+
+function isRoutineScheduledForDate(task, date) {
+    const anchor = new Date(task.dueDateRaw || task.createdAt);
+    if (Number.isNaN(anchor.getTime())) return false;
+
+    anchor.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+
+    if (date < anchor) return false;
+    if (task.recurrenceType === "Daily") return true;
+    if (task.recurrenceType === "Weekly") return date.getDay() === anchor.getDay();
+    if (task.recurrenceType === "Monthly") return date.getDate() === anchor.getDate();
+    return false;
 }
 
 async function toggleTask(id) {
@@ -236,13 +418,18 @@ async function deleteTask(id) {
 function updateStats() {
     const completed = tasks.filter((task) => task.completed).length;
     const pending = tasks.length - completed;
+    const overdue = getOverdueTasks(tasks).length;
 
     totalTasks.textContent = tasks.length;
     completedTasks.textContent = completed;
     inProgressTasks.textContent = pending;
-    overdueTasks.textContent = tasks.filter((task) =>
-        !task.completed && task.date && new Date(task.date) < startOfToday()
-    ).length;
+    overdueTasks.textContent = overdue;
+}
+
+function getOverdueTasks(items) {
+    return items.filter((task) =>
+        !task.completed && task.dueDateRaw && new Date(task.dueDateRaw) < startOfToday()
+    );
 }
 
 function startOfToday() {
@@ -323,6 +510,320 @@ async function apiRequest(url, options = {}) {
     return data;
 }
 
+async function apiDownload(url) {
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const error = new Error(data.message || "Download failed");
+        error.status = response.status;
+        throw error;
+    }
+
+    return response.blob();
+}
+
+async function refreshDashboardData() {
+    try {
+        const [analyticsResponse, productivityResponse] = await Promise.all([
+            apiRequest(ANALYTICS_API_URL),
+            apiRequest(PRODUCTIVITY_API_URL),
+        ]);
+
+        analyticsData = analyticsResponse.analytics;
+        productivityData = productivityResponse.productivity;
+    } catch (error) {
+        analyticsData = buildLocalAnalytics(tasks);
+        productivityData = buildLocalProductivity(tasks);
+    }
+}
+
+function buildLocalAnalytics(sourceTasks) {
+    const completedTasksCount = sourceTasks.filter((task) => task.completed).length;
+    const pendingTasks = sourceTasks.length - completedTasksCount;
+    const overdue = getOverdueTasks(sourceTasks).length;
+    const highPriorityTasks = sourceTasks.filter((task) => task.priority === "High").length;
+    const completedHighPriority = sourceTasks.filter((task) =>
+        task.priority === "High" && task.completed
+    ).length;
+    const recurringTasks = sourceTasks.filter((task) => task.isRecurring).length;
+    const recurringCompletions = sourceTasks.reduce((total, task) =>
+        total + (task.isRecurring ? task.totalCompletions || 0 : 0), 0);
+    const completionRate = sourceTasks.length
+        ? Math.round((completedTasksCount / sourceTasks.length) * 100)
+        : 0;
+    const highPriorityCompletionRate = highPriorityTasks
+        ? Math.round((completedHighPriority / highPriorityTasks) * 100)
+        : 0;
+    const score = calculateProductivityScore({
+        totalTasks: sourceTasks.length,
+        completionRate,
+        overdueTasks: overdue,
+        highPriorityCompletionRate,
+    });
+
+    return {
+        totalTasks: sourceTasks.length,
+        completedTasks: completedTasksCount,
+        pendingTasks,
+        overdueTasks: overdue,
+        highPriorityTasks,
+        recurringTasks,
+        recurringCompletions,
+        completionRate,
+        highPriorityCompletionRate,
+        score,
+        productivityLevel: getProductivityLevel(score),
+        tasksByCategory: ["Work", "Study", "Personal", "Health"].reduce((payload, category) => {
+            payload[category] = sourceTasks.filter((task) => task.category === category).length;
+            return payload;
+        }, {}),
+        recentActivity: [...sourceTasks]
+            .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+            .slice(0, 5),
+        performanceInsights: [
+            `${completionRate}% of tasks are complete.`,
+            overdue ? `${overdue} overdue task${overdue === 1 ? "" : "s"} need attention.` : "No overdue tasks right now.",
+            highPriorityTasks ? `${highPriorityCompletionRate}% of high-priority tasks are complete.` : "No high-priority tasks yet.",
+            recurringTasks ? `${recurringTasks} recurring routine task${recurringTasks === 1 ? " is" : "s are"} active.` : "No recurring routine tasks have been added yet.",
+        ],
+        recurringSummary: sourceTasks
+            .filter((task) => task.isRecurring)
+            .map((task) => ({
+                id: task.id,
+                title: task.title,
+                recurrenceType: task.recurrenceType,
+                status: task.completed ? "Completed" : "Pending",
+                streak: task.streak,
+                longestStreak: task.longestStreak,
+                totalCompletions: task.totalCompletions,
+                completionPercentage: getRoutineCompletionPercentage(task),
+                lastCompletedAt: task.lastCompletedAt,
+            })),
+    };
+}
+
+function buildLocalProductivity(sourceTasks) {
+    const analytics = buildLocalAnalytics(sourceTasks);
+    return {
+        score: analytics.score,
+        level: analytics.productivityLevel,
+        completionRate: analytics.completionRate,
+        overdueTasks: analytics.overdueTasks,
+        highPriorityCompletionRate: analytics.highPriorityCompletionRate,
+    };
+}
+
+function calculateProductivityScore(metrics) {
+    const overduePenalty = metrics.totalTasks
+        ? Math.min(30, Math.round((metrics.overdueTasks / metrics.totalTasks) * 30))
+        : 0;
+
+    return Math.max(0, Math.min(100,
+        Math.round((metrics.completionRate * 0.5) + (metrics.highPriorityCompletionRate * 0.3) + Math.min(10, metrics.recurringCompletions || 0) + 10 - overduePenalty)
+    ));
+}
+
+function getProductivityLevel(score) {
+    if (score >= 85) return "Excellent";
+    if (score >= 70) return "Good";
+    if (score >= 50) return "Average";
+    return "Needs Improvement";
+}
+
+function createDashboardModules() {
+    const tasksSection = document.querySelector(".tasks-section");
+    tasksSection.insertAdjacentHTML("afterend", `
+        <section class="dashboard-module glass-card hidden" id="analyticsModule">
+            <div class="module-header">
+                <h2>Analytics</h2>
+                <span id="completionPercent">0% Complete</span>
+            </div>
+            <div class="module-grid" id="analyticsCards"></div>
+            <div class="chart-grid">
+                <div>
+                    <h3>Tasks by Category</h3>
+                    <div id="categoryChart"></div>
+                </div>
+                <div>
+                    <h3>Recent Activity</h3>
+                    <div id="recentActivity"></div>
+                </div>
+            </div>
+            <div class="insight-list" id="performanceInsights"></div>
+        </section>
+
+        <section class="dashboard-module glass-card hidden" id="exportModule">
+            <div class="module-header">
+                <h2>Export Report</h2>
+                <span>Task history downloads</span>
+            </div>
+            <div class="export-actions">
+                <button class="new-task-btn" id="csvExportBtn" type="button">Download CSV</button>
+                <button class="new-task-btn" id="pdfExportBtn" type="button">Download PDF</button>
+            </div>
+            <div class="report-preview" id="reportPreview"></div>
+        </section>
+
+        <section class="dashboard-module glass-card hidden" id="productivityModule">
+            <div class="module-header">
+                <h2>Productivity Score</h2>
+                <span id="productivityLevel">Needs Improvement</span>
+            </div>
+            <div class="score-panel">
+                <div class="score-circle"><span id="productivityScore">0</span></div>
+                <div class="insight-list" id="productivityInsights"></div>
+            </div>
+        </section>
+    `);
+
+    document.getElementById("csvExportBtn").addEventListener("click", () => downloadReport("csv"));
+    document.getElementById("pdfExportBtn").addEventListener("click", () => downloadReport("pdf"));
+}
+
+function bindSidebarMenu() {
+    document.querySelectorAll(".menu-item").forEach((item) => {
+        const label = item.textContent.trim();
+        item.dataset.view = label;
+
+        item.addEventListener("click", () => {
+            document.querySelectorAll(".menu-item").forEach((menuItem) => menuItem.classList.remove("active"));
+            item.classList.add("active");
+            showDashboardView(label);
+        });
+    });
+}
+
+function showDashboardView(label) {
+    const taskButton = document.querySelector(".task-btn-wrapper");
+    const taskSection = document.querySelector(".tasks-section");
+    const modules = document.querySelectorAll(".dashboard-module");
+
+    modules.forEach((module) => module.classList.add("hidden"));
+    taskButton.classList.add("hidden");
+    taskSection.classList.add("hidden");
+
+    if (label === "Analytics") {
+        document.getElementById("analyticsModule").classList.remove("hidden");
+        renderAnalytics();
+        return;
+    }
+
+    if (label === "Export Report") {
+        document.getElementById("exportModule").classList.remove("hidden");
+        renderReportPreview();
+        return;
+    }
+
+    if (label === "Productivity Score") {
+        document.getElementById("productivityModule").classList.remove("hidden");
+        renderProductivity();
+        return;
+    }
+
+    taskButton.classList.remove("hidden");
+    taskSection.classList.remove("hidden");
+    renderTasks(currentFilter);
+}
+
+function renderDashboardModules() {
+    renderAnalytics();
+    renderProductivity();
+    renderReportPreview();
+}
+
+function renderAnalytics() {
+    const analytics = analyticsData || buildLocalAnalytics(tasks);
+    const cards = [
+        ["Total Tasks", analytics.totalTasks],
+        ["Completed Tasks", analytics.completedTasks],
+        ["Pending Tasks", analytics.pendingTasks],
+        ["Overdue Tasks", analytics.overdueTasks],
+        ["High Priority Tasks", analytics.highPriorityTasks],
+        ["Routine Tasks", analytics.recurringTasks || 0],
+        ["Completion", `${analytics.completionRate}%`],
+    ];
+
+    document.getElementById("completionPercent").textContent = `${analytics.completionRate}% Complete`;
+    document.getElementById("analyticsCards").innerHTML = cards.map(([label, value]) => `
+        <div class="mini-stat">
+            <p>${escapeHTML(label)}</p>
+            <strong>${escapeHTML(value)}</strong>
+        </div>
+    `).join("");
+
+    const maxCategory = Math.max(1, ...Object.values(analytics.tasksByCategory || {}));
+    document.getElementById("categoryChart").innerHTML = Object.entries(analytics.tasksByCategory || {})
+        .map(([category, count]) => `
+            <div class="chart-row">
+                <span>${escapeHTML(category)}</span>
+                <div><i style="width:${Math.max(4, (count / maxCategory) * 100)}%"></i></div>
+                <strong>${count}</strong>
+            </div>
+        `).join("");
+
+    document.getElementById("recentActivity").innerHTML = (analytics.recentActivity || [])
+        .map((activity) => `
+            <div class="activity-item">
+                <strong>${escapeHTML(activity.title)}</strong>
+                <span>${escapeHTML(activity.status || (activity.completed ? "Completed" : "Pending"))} | ${escapeHTML(formatTaskDateTime(activity.completedAt || activity.updatedAt || activity.createdAt))}</span>
+            </div>
+        `).join("") || `<div class="task-state">No recent activity yet.</div>`;
+
+    document.getElementById("performanceInsights").innerHTML = (analytics.performanceInsights || [])
+        .map((insight) => `<div class="insight-item">${escapeHTML(insight)}</div>`)
+        .join("");
+}
+
+function renderProductivity() {
+    const productivity = productivityData || buildLocalProductivity(tasks);
+    const score = productivity.score || 0;
+
+    document.getElementById("productivityScore").textContent = score;
+    document.getElementById("productivityLevel").textContent = productivity.level || getProductivityLevel(score);
+    document.querySelector(".score-circle").style.background =
+        `conic-gradient(var(--accent) ${score * 3.6}deg, rgba(255,255,255,0.08) 0deg)`;
+
+    document.getElementById("productivityInsights").innerHTML = [
+        `Completion Rate: ${productivity.completionRate || 0}%`,
+        `High-Priority Completion: ${productivity.highPriorityCompletionRate || 0}%`,
+        `Overdue Tasks: ${productivity.overdueTasks || 0}`,
+        `Routine Completions: ${productivity.recurringCompletions || 0}`,
+    ].map((insight) => `<div class="insight-item">${escapeHTML(insight)}</div>`).join("");
+}
+
+function renderReportPreview() {
+    const rows = tasks.slice(0, 8).map((task) => `
+        <div class="report-row">
+            <strong>${escapeHTML(task.title)}</strong>
+            <span>${escapeHTML(task.category)} | ${escapeHTML(task.priority)} | ${task.completed ? "Completed" : "Pending"}</span>
+        </div>
+    `).join("");
+
+    document.getElementById("reportPreview").innerHTML = rows || `<div class="task-state">No tasks available to export.</div>`;
+}
+
+async function downloadReport(format) {
+    try {
+        const blob = await apiDownload(`${EXPORT_API_URL}?format=${format}`);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `taskmaster-report.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast(`${format.toUpperCase()} report downloaded`);
+    } catch (error) {
+        showToast(error.message, "error");
+    }
+}
+
 function createTaskControls() {
     const taskListArea = document.querySelector(".task-list-area");
     const tools = document.createElement("div");
@@ -347,28 +848,40 @@ function createTaskControls() {
             <option value="Pending">Pending</option>
             <option value="Completed">Completed</option>
         </select>
+        <select id="sortFilter" aria-label="Sort tasks">
+            <option value="created-desc">Newest Created</option>
+            <option value="date-asc">Due Date Asc</option>
+            <option value="date-desc">Due Date Desc</option>
+            <option value="priority-desc">Priority High-Low</option>
+            <option value="priority-asc">Priority Low-High</option>
+        </select>
     `;
 
     taskListArea.insertBefore(tools, taskList);
 
     document.getElementById("taskSearchInput").addEventListener("input", debounce((event) => {
         searchTerm = event.target.value.trim();
-        loadTasks();
+        renderTasks(currentFilter);
     }, 300));
 
     document.getElementById("categoryFilter").addEventListener("change", (event) => {
         categoryFilter = event.target.value;
-        loadTasks();
+        renderTasks(currentFilter);
     });
 
     document.getElementById("priorityFilter").addEventListener("change", (event) => {
         priorityFilter = event.target.value;
-        loadTasks();
+        renderTasks(currentFilter);
     });
 
     document.getElementById("statusFilter").addEventListener("change", (event) => {
         statusFilter = event.target.value;
-        loadTasks();
+        renderTasks(currentFilter);
+    });
+
+    document.getElementById("sortFilter").addEventListener("change", (event) => {
+        sortFilter = event.target.value;
+        renderTasks(currentFilter);
     });
 }
 
