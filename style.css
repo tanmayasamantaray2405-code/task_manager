@@ -1094,7 +1094,7 @@ input[type="date"] {
 
 .task-tools{
     display:grid;
-    grid-template-columns:1fr repeat(4,minmax(125px,150px));
+    grid-template-columns:1fr repeat(5,minmax(120px,145px));
     gap:12px;
     margin-bottom:16px;
 }
@@ -1142,6 +1142,56 @@ input[type="date"] {
     margin-top:8px;
     color:var(--text-muted);
     font-size:12px;
+}
+
+.hidden{
+    display:none !important;
+}
+
+.task-overdue{
+    border-color:rgba(255,90,90,0.55);
+}
+
+.compact-module-header{
+    margin-top:22px;
+}
+
+.history-tools{
+    grid-template-columns:1fr minmax(150px,190px);
+}
+
+.header-right{
+    position:relative;
+}
+
+.account-menu{
+    position:absolute;
+    top:52px;
+    right:0;
+    z-index:20;
+    min-width:210px;
+    border:1px solid var(--card-border);
+    border-radius:12px;
+    background:var(--card-bg);
+    backdrop-filter:blur(16px);
+    box-shadow:var(--shadow);
+    padding:8px;
+}
+
+.account-menu button{
+    width:100%;
+    border:0;
+    border-radius:10px;
+    background:transparent;
+    color:var(--text-primary);
+    cursor:pointer;
+    padding:10px 12px;
+    text-align:left;
+}
+
+.account-menu button:hover{
+    background:rgba(0,212,255,0.12);
+    color:var(--accent);
 }
 
 .routine-meta span{

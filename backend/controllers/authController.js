@@ -96,8 +96,63 @@ const logoutUser = async (req, res) => {
   });
 };
 
+const updateProfile = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const email = req.body.email !== undefined ? normalizeEmail(req.body.email) : undefined;
+
+    const user = await User.findById(req.user._id).select("+password");
+
+    if (!user) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    if (email !== undefined) {
+      if (!isValidEmail(email)) {
+        res.status(400);
+        throw new Error("Please enter a valid email address");
+      }
+
+      const existingUser = await User.findOne({ email, _id: { $ne: user._id } });
+
+      if (existingUser) {
+        res.status(400);
+        throw new Error("An account with this email already exists");
+      }
+
+      user.email = email;
+    }
+
+    if (newPassword) {
+      if (!currentPassword) {
+        res.status(400);
+        throw new Error("Current password is required");
+      }
+
+      if (!(await user.matchPassword(currentPassword))) {
+        res.status(401);
+        throw new Error("Current password is incorrect");
+      }
+
+      if (!isStrongEnoughPassword(newPassword)) {
+        res.status(400);
+        throw new Error("Password must be at least 6 characters long");
+      }
+
+      user.password = newPassword;
+    }
+
+    await user.save();
+    sendAuthResponse(res, 200, user);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   logoutUser,
+  updateProfile,
 };

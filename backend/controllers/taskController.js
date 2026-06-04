@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 const Task = require("../models/Task");
+const ActivityLog = require("../models/ActivityLog");
 
 const allowedStatuses = ["Pending", "Completed"];
 const allowedPriorities = ["Low", "Medium", "High"];
 const allowedCategories = ["Work", "Study", "Personal", "Health"];
 const allowedRecurrenceTypes = ["None", "Daily", "Weekly", "Monthly"];
+const allowedHistoryRanges = ["today", "week", "month", "all"];
 
 const isValidDate = (value) => {
   if (!value) return false;
@@ -18,6 +20,26 @@ const escapeRegExp = (value = "") =>
 const startOfToday = () => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  return today;
+};
+
+const endOfToday = () => {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return today;
+};
+
+const startOfWeek = () => {
+  const today = startOfToday();
+  const day = today.getDay();
+  const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+  today.setDate(diff);
+  return today;
+};
+
+const startOfMonth = () => {
+  const today = startOfToday();
+  today.setDate(1);
   return today;
 };
 
@@ -168,12 +190,41 @@ const formatReportDateTime = (value) => {
 
 const csvValue = (value = "") => `"${String(value).replace(/"/g, '""')}"`;
 
+const normalizeCategory = (category = "Personal") => {
+  const normalized = String(category || "Personal").trim();
+  return normalized || "Personal";
+};
+
+const validateCategory = (category) => {
+  const normalized = normalizeCategory(category);
+  if (normalized.length > 40) return false;
+  return /^[A-Za-z0-9][A-Za-z0-9\s-]{0,39}$/.test(normalized);
+};
+
+const createActivityLog = async (userId, task, action, metadata = {}) => {
+  await ActivityLog.create({
+    userId,
+    taskId: task?._id || null,
+    action,
+    taskTitle: task?.title || metadata.taskTitle || "Untitled task",
+    metadata,
+  });
+};
+
 const calculateTaskMetrics = (tasks) => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((task) => task.status === "Completed").length;
   const pendingTasks = totalTasks - completedTasks;
   const overdueTasks = tasks.filter((task) =>
     task.status !== "Completed" && task.dueDate && new Date(task.dueDate) < startOfToday()
+  ).length;
+  const todayStart = startOfToday();
+  const todayEnd = endOfToday();
+  const todayTasks = tasks.filter((task) =>
+    task.dueDate && new Date(task.dueDate) >= todayStart && new Date(task.dueDate) <= todayEnd
+  ).length;
+  const upcomingReminders = tasks.filter((task) =>
+    task.status !== "Completed" && task.reminderTime && new Date(task.reminderTime) >= new Date()
   ).length;
   const highPriorityTasks = tasks.filter((task) => task.priority === "High").length;
   const completedHighPriorityTasks = tasks.filter((task) =>
@@ -206,6 +257,8 @@ const calculateTaskMetrics = (tasks) => {
     completedTasks,
     pendingTasks,
     overdueTasks,
+    todayTasks,
+    upcomingReminders,
     highPriorityTasks,
     recurringTasks,
     recurringCompletions,
@@ -218,7 +271,8 @@ const calculateTaskMetrics = (tasks) => {
 
 const buildAnalyticsPayload = (tasks) => {
   const metrics = calculateTaskMetrics(tasks);
-  const tasksByCategory = allowedCategories.reduce((payload, category) => {
+  const categories = [...new Set([...allowedCategories, ...tasks.map((task) => task.category).filter(Boolean)])];
+  const tasksByCategory = categories.reduce((payload, category) => {
     payload[category] = tasks.filter((task) => task.category === category).length;
     return payload;
   }, {});
@@ -253,6 +307,8 @@ const buildAnalyticsPayload = (tasks) => {
 
   return {
     ...metrics,
+    currentStreak: Math.max(0, ...tasks.map((task) => task.streak || 0)),
+    bestStreak: Math.max(0, ...tasks.map((task) => task.longestStreak || 0)),
     tasksByCategory,
     recentActivity,
     performanceInsights,
@@ -376,9 +432,12 @@ const addTask = async (req, res, next) => {
       status = "Pending",
       priority = "Medium",
       category = "Personal",
+      customCategory,
       dueDate,
       date,
+      reminderTime,
       recurrenceType = "None",
+      recurring: recurringAlias,
       isRecurring,
     } = req.body;
 
@@ -386,6 +445,7 @@ const addTask = async (req, res, next) => {
     const taskTitle = typeof rawTaskTitle === "string" ? rawTaskTitle.trim() : "";
     const taskDescription = typeof description === "string" ? description.trim() : "";
     const taskDueDate = dueDate || date;
+    const taskCategory = normalizeCategory(customCategory || category);
 
     if (!taskTitle) {
       res.status(400);
@@ -412,7 +472,7 @@ const addTask = async (req, res, next) => {
       throw new Error("Invalid task priority");
     }
 
-    if (!allowedCategories.includes(category)) {
+    if (!validateCategory(taskCategory)) {
       res.status(400);
       throw new Error("Invalid task category");
     }
@@ -422,7 +482,12 @@ const addTask = async (req, res, next) => {
       throw new Error("Invalid recurrence type");
     }
 
-    const recurring = Boolean(isRecurring) || recurrenceType !== "None";
+    if (reminderTime && !isValidDate(reminderTime)) {
+      res.status(400);
+      throw new Error("Invalid reminder time");
+    }
+
+    const recurring = Boolean(isRecurring) || Boolean(recurringAlias) || recurrenceType !== "None";
     const normalizedRecurrenceType = recurring
       ? recurrenceType === "None" ? "Daily" : recurrenceType
       : "None";
@@ -433,9 +498,11 @@ const addTask = async (req, res, next) => {
       description: taskDescription,
       status,
       priority,
-      category,
+      category: taskCategory,
       dueDate: taskDueDate,
       completedAt: !recurring && status === "Completed" ? new Date() : null,
+      reminderTime: reminderTime || null,
+      recurring,
       isRecurring: recurring,
       recurrenceType: normalizedRecurrenceType,
       completionHistory: recurring && status === "Completed"
@@ -447,6 +514,15 @@ const addTask = async (req, res, next) => {
       recalculateRecurringStats(task);
       await task.save();
     }
+
+    await createActivityLog(req.user._id, task, "Task Created", {
+      status: task.status,
+      priority: task.priority,
+      category: task.category,
+      dueDate: task.dueDate,
+      reminderTime: task.reminderTime,
+      recurrenceType: task.recurrenceType,
+    });
 
     res.status(201).json({
       success: true,
@@ -460,12 +536,24 @@ const addTask = async (req, res, next) => {
 
 const getTasks = async (req, res, next) => {
   try {
-    const { search, status, priority, category, sortBy = "createdAt", sortOrder = "desc" } = req.query;
-    const query = { userId: req.user._id };
+    const { search, status, priority, category, dueDate, sortBy = "createdAt", sortOrder = "desc" } = req.query;
+    const query = { userId: req.user._id, deletedAt: null };
 
     if (status && allowedStatuses.includes(status)) query.status = status;
     if (priority && allowedPriorities.includes(priority)) query.priority = priority;
-    if (category && allowedCategories.includes(category)) query.category = category;
+    if (category) query.category = normalizeCategory(category);
+    if (dueDate) {
+      if (!isValidDate(dueDate)) {
+        res.status(400);
+        throw new Error("Invalid due date filter");
+      }
+
+      const start = new Date(dueDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(23, 59, 59, 999);
+      query.dueDate = { $gte: start, $lte: end };
+    }
     if (search) {
       query.$or = [
         { title: { $regex: escapeRegExp(search), $options: "i" } },
@@ -473,7 +561,7 @@ const getTasks = async (req, res, next) => {
       ];
     }
 
-    const allowedSortFields = ["createdAt", "updatedAt", "dueDate", "priority", "status", "category"];
+    const allowedSortFields = ["createdAt", "updatedAt", "dueDate", "priority", "status", "category", "reminderTime"];
     const sortField = allowedSortFields.includes(sortBy) ? sortBy : "createdAt";
     const sortDirection = sortOrder === "asc" ? 1 : -1;
     const tasks = await Task.find(query).sort({ [sortField]: sortDirection });
@@ -494,7 +582,7 @@ const getTasks = async (req, res, next) => {
 
 const getAnalytics = async (req, res, next) => {
   try {
-    const tasks = await Task.find({ userId: req.user._id }).sort({ updatedAt: -1 });
+    const tasks = await Task.find({ userId: req.user._id, deletedAt: null }).sort({ updatedAt: -1 });
     await syncRecurringTasks(tasks);
 
     res.status(200).json({
@@ -508,7 +596,7 @@ const getAnalytics = async (req, res, next) => {
 
 const getProductivity = async (req, res, next) => {
   try {
-    const tasks = await Task.find({ userId: req.user._id });
+    const tasks = await Task.find({ userId: req.user._id, deletedAt: null });
     await syncRecurringTasks(tasks);
     const metrics = calculateTaskMetrics(tasks);
 
@@ -567,7 +655,7 @@ const getTask = async (req, res, next) => {
       throw new Error("Invalid task ID");
     }
 
-    const task = await Task.findOne({ _id: id, userId: req.user._id });
+    const task = await Task.findOne({ _id: id, userId: req.user._id, deletedAt: null });
 
     if (!task) {
       res.status(404);
@@ -601,6 +689,8 @@ const updateTask = async (req, res, next) => {
       "priority",
       "category",
       "dueDate",
+      "reminderTime",
+      "recurring",
       "isRecurring",
       "recurrenceType",
     ];
@@ -641,7 +731,11 @@ const updateTask = async (req, res, next) => {
       throw new Error("Invalid task priority");
     }
 
-    if (updates.category && !allowedCategories.includes(updates.category)) {
+    if (updates.category !== undefined) {
+      updates.category = normalizeCategory(updates.category);
+    }
+
+    if (updates.category && !validateCategory(updates.category)) {
       res.status(400);
       throw new Error("Invalid task category");
     }
@@ -666,12 +760,19 @@ const updateTask = async (req, res, next) => {
       throw new Error("Invalid due date");
     }
 
+    if (updates.reminderTime !== undefined && updates.reminderTime !== null && updates.reminderTime !== "" && !isValidDate(updates.reminderTime)) {
+      res.status(400);
+      throw new Error("Invalid reminder time");
+    }
+
+    if (updates.reminderTime === "") updates.reminderTime = null;
+
     if (!Object.keys(updates).length) {
       res.status(400);
       throw new Error("No valid task updates provided");
     }
 
-    const task = await Task.findOne({ _id: id, userId: req.user._id });
+    const task = await Task.findOne({ _id: id, userId: req.user._id, deletedAt: null });
 
     if (!task) {
       res.status(404);
@@ -680,13 +781,24 @@ const updateTask = async (req, res, next) => {
 
     if (updates.recurrenceType && updates.recurrenceType !== "None") {
       updates.isRecurring = true;
+      updates.recurring = true;
     }
 
     if (updates.isRecurring === false) {
       updates.recurrenceType = "None";
+      updates.recurring = false;
     }
 
-    const willBeRecurring = updates.isRecurring !== undefined ? updates.isRecurring : task.isRecurring;
+    if (updates.recurring !== undefined) {
+      updates.isRecurring = Boolean(updates.recurring);
+      if (!updates.recurring) updates.recurrenceType = "None";
+    }
+
+    const willBeRecurring = updates.isRecurring !== undefined
+      ? updates.isRecurring
+      : updates.recurring !== undefined
+        ? updates.recurring
+        : task.isRecurring;
 
     if (willBeRecurring && updates.status === "Completed") {
       const todayKey = toDateKey();
@@ -715,16 +827,30 @@ const updateTask = async (req, res, next) => {
       delete updates.status;
     } else if (updates.status === "Completed" && task.status !== "Completed") {
       updates.completedAt = new Date();
+      updates.lastCompletedAt = updates.completedAt;
     }
 
     if (!willBeRecurring && updates.status === "Pending") {
       updates.completedAt = null;
     }
 
+    const previousStatus = task.status;
     Object.assign(task, updates);
+    task.recurring = task.isRecurring;
     if (task.isRecurring) recalculateRecurringStats(task);
     await task.save();
     await syncRecurringTaskForToday(task);
+
+    await createActivityLog(
+      req.user._id,
+      task,
+      previousStatus !== "Completed" && task.status === "Completed" ? "Task Completed" : "Task Edited",
+      {
+        updates: Object.keys(updates),
+        status: task.status,
+        completedAt: task.completedAt,
+      }
+    );
 
     res.status(200).json({
       success: true,
@@ -745,14 +871,19 @@ const deleteTask = async (req, res, next) => {
       throw new Error("Invalid task ID");
     }
 
-    const task = await Task.findOne({ _id: id, userId: req.user._id });
+    const task = await Task.findOne({ _id: id, userId: req.user._id, deletedAt: null });
 
     if (!task) {
       res.status(404);
       throw new Error("Task not found");
     }
 
-    await task.deleteOne();
+    task.deletedAt = new Date();
+    await task.save();
+    await createActivityLog(req.user._id, task, "Task Deleted", {
+      deletedAt: task.deletedAt,
+      status: task.status,
+    });
 
     res.status(200).json({
       success: true,
@@ -763,10 +894,113 @@ const deleteTask = async (req, res, next) => {
   }
 };
 
+const getTaskHistory = async (req, res, next) => {
+  try {
+    const range = allowedHistoryRanges.includes(String(req.query.range || "").toLowerCase())
+      ? String(req.query.range).toLowerCase()
+      : "all";
+    const search = String(req.query.search || "").trim();
+    const completedAtRange = {};
+
+    if (range !== "all") {
+      const start = range === "today" ? startOfToday() : range === "week" ? startOfWeek() : startOfMonth();
+      completedAtRange.$gte = start;
+      completedAtRange.$lte = endOfToday();
+    }
+
+    const searchMatches = (task) => {
+      if (!search) return true;
+      const expression = new RegExp(escapeRegExp(search), "i");
+      return expression.test(task.title) || expression.test(task.description || "") || expression.test(task.category || "");
+    };
+
+    const baseTasks = await Task.find({ userId: req.user._id }).sort({ completedAt: -1 });
+    const history = [];
+
+    baseTasks.forEach((task) => {
+      if (!task.isRecurring && task.status === "Completed" && task.completedAt && searchMatches(task)) {
+        const completedAt = new Date(task.completedAt);
+        if (range === "all" || (completedAt >= completedAtRange.$gte && completedAt <= completedAtRange.$lte)) {
+          history.push(task.toObject());
+        }
+      }
+
+      if (task.isRecurring) {
+        task.completionHistory
+          .filter((entry) => entry.status === "Completed" && entry.completedAt)
+          .forEach((entry) => {
+            const completedAt = new Date(entry.completedAt);
+            if (searchMatches(task) && (range === "all" || (completedAt >= completedAtRange.$gte && completedAt <= completedAtRange.$lte))) {
+              history.push({
+                ...task.toObject(),
+                _id: `${task._id}-${entry.dateKey}`,
+                status: "Completed",
+                completedAt: entry.completedAt,
+                historyDateKey: entry.dateKey,
+              });
+            }
+          });
+      }
+    });
+
+    const tasks = history
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
+      .slice(0, 300);
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getUpcomingReminders = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const through = addDays(now, 7);
+    const tasks = await Task.find({
+      userId: req.user._id,
+      deletedAt: null,
+      status: "Pending",
+      reminderTime: { $gte: now, $lte: through },
+    }).sort({ reminderTime: 1 }).limit(25);
+
+    res.status(200).json({
+      success: true,
+      count: tasks.length,
+      reminders: tasks,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getActivityLog = async (req, res, next) => {
+  try {
+    const logs = await ActivityLog.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      logs,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   addTask,
   getTasks,
   getTask,
+  getTaskHistory,
+  getUpcomingReminders,
+  getActivityLog,
   getAnalytics,
   getProductivity,
   exportTaskReport,

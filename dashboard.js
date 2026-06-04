@@ -3,6 +3,9 @@ const TASKS_API_URL = `${API_ROOT}/tasks`;
 const ANALYTICS_API_URL = `${TASKS_API_URL}/analytics`;
 const PRODUCTIVITY_API_URL = `${TASKS_API_URL}/productivity`;
 const EXPORT_API_URL = `${TASKS_API_URL}/export`;
+const HISTORY_API_URL = `${TASKS_API_URL}/history`;
+const REMINDERS_API_URL = `${TASKS_API_URL}/reminders`;
+const ACTIVITY_API_URL = `${TASKS_API_URL}/activity`;
 const AUTH_API_URL = `${API_ROOT}/auth`;
 const token = localStorage.getItem("token");
 const user = JSON.parse(localStorage.getItem("currentUser") || "null");
@@ -11,7 +14,11 @@ if (!token || !user) {
     window.location.replace("auth.html");
 }
 
-const firstName = user?.name?.split(" ")[0] || "User";
+const formatFirstName = (name = "User") => {
+    const first = String(name || "User").trim().split(/\s+/)[0] || "User";
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+};
+const firstName = formatFirstName(user?.name);
 const backupKey = `taskmaster_tasks_${user?.id || user?._id || "guest"}`;
 
 document.querySelector(".welcome-heading").textContent = `Welcome, ${firstName}`;
@@ -38,10 +45,17 @@ let searchTerm = "";
 let categoryFilter = "";
 let priorityFilter = "";
 let statusFilter = "";
+let dueDateFilter = "";
 let sortFilter = "created-desc";
 let aimlSuggestionRules = [];
 let analyticsData = null;
 let productivityData = null;
+let historyData = [];
+let reminderData = [];
+let activityData = [];
+let editingTaskId = null;
+let historyRange = "all";
+let historySearch = "";
 
 const taskList = document.getElementById("taskList");
 const taskModal = document.getElementById("taskModal");
@@ -52,8 +66,12 @@ const taskDateInput = document.getElementById("taskDate");
 const taskPriorityInput = document.getElementById("taskPriority");
 const taskCategoryInput = document.getElementById("taskCategory");
 const taskRecurrenceInput = document.getElementById("taskRecurrence");
+const taskModalTitle = taskModal.querySelector("h2");
+const taskSubmitButton = taskForm.querySelector(".add-btn");
 
 ensureToast();
+createAccountMenu();
+enhanceTaskFormFields();
 createTaskControls();
 createDashboardModules();
 bindSidebarMenu();
@@ -61,6 +79,7 @@ createSuggestionBox();
 loadAimlSuggestions();
 
 document.getElementById("newTaskBtn").onclick = () => {
+    prepareTaskModal();
     taskModal.classList.add("active");
     taskTitleInput.focus();
 };
@@ -79,9 +98,11 @@ taskForm.addEventListener("submit", async (e) => {
         description: taskDescriptionInput.value.trim(),
         dueDate: taskDateInput.value,
         priority: taskPriorityInput.value,
-        category: taskCategoryInput.value,
+        category: getSelectedCategory(),
+        reminderTime: getReminderValue(),
         recurrenceType: taskRecurrenceInput.value,
         isRecurring: taskRecurrenceInput.value !== "None",
+        recurring: taskRecurrenceInput.value !== "None",
     };
 
     if (!task.title) {
@@ -91,14 +112,16 @@ taskForm.addEventListener("submit", async (e) => {
 
     try {
         setFormLoading(true);
-        await apiRequest(TASKS_API_URL, {
-            method: "POST",
+        const wasEditing = Boolean(editingTaskId);
+        await apiRequest(editingTaskId ? `${TASKS_API_URL}/${editingTaskId}` : TASKS_API_URL, {
+            method: editingTaskId ? "PUT" : "POST",
             body: JSON.stringify(task),
         });
 
         taskForm.reset();
         closeTaskModal();
-        showToast("Task added successfully");
+        showToast(wasEditing ? "Task updated successfully" : "Task added successfully");
+        editingTaskId = null;
         await loadTasks();
     } catch (error) {
         showToast(error.message, "error");
@@ -145,7 +168,9 @@ function formatTaskForDashboard(task) {
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
         completedAt: task.completedAt,
+        reminderTime: task.reminderTime,
         isRecurring: Boolean(task.isRecurring),
+        recurring: Boolean(task.recurring || task.isRecurring),
         recurrenceType: task.recurrenceType || "None",
         streak: task.streak || 0,
         longestStreak: task.longestStreak || 0,
@@ -153,6 +178,75 @@ function formatTaskForDashboard(task) {
         lastCompletedAt: task.lastCompletedAt,
         completionHistory: task.completionHistory || [],
     };
+}
+
+function enhanceTaskFormFields() {
+    if (!taskCategoryInput.querySelector('option[value="Custom"]')) {
+        taskCategoryInput.insertAdjacentHTML("beforeend", `<option value="Custom">Custom Category</option>`);
+    }
+
+    taskCategoryInput.insertAdjacentHTML("afterend", `
+        <input type="text" id="customCategoryInput" class="hidden" placeholder="Custom Category">
+        <label>Reminder Time</label>
+        <input type="datetime-local" id="taskReminderTime">
+    `);
+
+    taskCategoryInput.addEventListener("change", () => {
+        document.getElementById("customCategoryInput").classList.toggle("hidden", taskCategoryInput.value !== "Custom");
+    });
+}
+
+function getSelectedCategory() {
+    if (taskCategoryInput.value !== "Custom") return taskCategoryInput.value;
+    return document.getElementById("customCategoryInput").value.trim();
+}
+
+function getReminderValue() {
+    const value = document.getElementById("taskReminderTime")?.value;
+    return value ? new Date(value).toISOString() : null;
+}
+
+function toDateInputValue(value) {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toISOString().split("T")[0];
+}
+
+function toDateTimeInputValue(value) {
+    if (!value) return "";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    parsed.setMinutes(parsed.getMinutes() - parsed.getTimezoneOffset());
+    return parsed.toISOString().slice(0, 16);
+}
+
+function prepareTaskModal(task = null) {
+    editingTaskId = task?.id || null;
+    taskModalTitle.textContent = task ? "Edit Task" : "Add New Task";
+    taskSubmitButton.textContent = task ? "Update Task" : "Add Task";
+
+    taskForm.reset();
+    document.getElementById("customCategoryInput").classList.add("hidden");
+
+    if (!task) return;
+
+    taskTitleInput.value = task.title;
+    taskDescriptionInput.value = task.description || "";
+    taskDateInput.value = toDateInputValue(task.dueDateRaw);
+    taskPriorityInput.value = task.priority || "Medium";
+
+    const knownCategories = ["Work", "Study", "Personal", "Health"];
+    if (knownCategories.includes(task.category)) {
+        taskCategoryInput.value = task.category;
+    } else {
+        taskCategoryInput.value = "Custom";
+        document.getElementById("customCategoryInput").value = task.category || "";
+        document.getElementById("customCategoryInput").classList.remove("hidden");
+    }
+
+    taskRecurrenceInput.value = task.recurrenceType || "None";
+    document.getElementById("taskReminderTime").value = toDateTimeInputValue(task.reminderTime);
 }
 
 function formatTaskDate(date) {
@@ -262,6 +356,7 @@ function getVisibleTasks() {
     if (statusFilter) filtered = filtered.filter((task) =>
         statusFilter === "Completed" ? task.completed : !task.completed
     );
+    if (dueDateFilter) filtered = filtered.filter((task) => toDateInputValue(task.dueDateRaw) === dueDateFilter);
 
     return sortTasks(filtered);
 }
@@ -310,7 +405,7 @@ function renderTaskSection(title, sectionTasks) {
 
 function createTaskCard(task) {
     const div = document.createElement("div");
-    div.className = "task-card";
+    div.className = `task-card ${isOverdue(task) ? "task-overdue" : ""}`;
 
     div.innerHTML = `
     <div class="task-left">
@@ -322,6 +417,9 @@ function createTaskCard(task) {
                 ${escapeHTML(task.title)}
             </div>
             <div class="task-date">Due: ${escapeHTML(task.date || "No date")} | ${escapeHTML(task.category)}</div>
+            ${isOverdue(task) ? `<div class="task-date overdue-text">Overdue</div>` : ""}
+            ${task.reminderTime ? `<div class="task-date">Reminder: ${escapeHTML(formatTaskDateTime(task.reminderTime))}</div>` : ""}
+            ${task.completedAt ? `<div class="task-date">Completed: ${escapeHTML(formatTaskDateTime(task.completedAt))}</div>` : ""}
             ${task.isRecurring ? getRoutineStatsHTML(task) : ""}
         </div>
     </div>
@@ -330,11 +428,24 @@ function createTaskCard(task) {
         <span class="priority-badge ${task.priority.toLowerCase()}">
             ${escapeHTML(task.priority)}
         </span>
+        <i class="fa-solid fa-pen" onclick="editTask('${task.id}')" title="Edit task"></i>
         <i class="fa-solid fa-trash" onclick="deleteTask('${task.id}')" title="Delete task permanently"></i>
     </div>
     `;
 
     return div;
+}
+
+function isOverdue(task) {
+    return !task.completed && task.dueDateRaw && new Date(task.dueDateRaw) < startOfToday();
+}
+
+function editTask(id) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    prepareTaskModal(task);
+    taskModal.classList.add("active");
+    taskTitleInput.focus();
 }
 
 function getRoutineStatsHTML(task) {
@@ -451,6 +562,118 @@ document.querySelectorAll(".filter-btn").forEach((btn) => {
 
 document.getElementById("logoutBtn").addEventListener("click", () => logout("Logout successful"));
 
+function createAccountMenu() {
+    const headerRight = document.querySelector(".header-right");
+    const avatar = document.getElementById("userAvatar");
+
+    avatar.setAttribute("tabindex", "0");
+    avatar.setAttribute("role", "button");
+    avatar.setAttribute("aria-label", "Account settings");
+
+    headerRight.insertAdjacentHTML("beforeend", `
+        <div class="account-menu hidden" id="accountMenu">
+            <button type="button" id="changeProfileBtn">Change Email / Password</button>
+        </div>
+    `);
+
+    document.body.insertAdjacentHTML("beforeend", `
+        <div class="task-modal" id="profileModal">
+            <div class="task-modal-card">
+                <button id="closeProfileModalX" class="modal-close-x" type="button">&times;</button>
+                <h2>Account Settings</h2>
+                <form id="profileForm">
+                    <label>Email</label>
+                    <input type="email" id="profileEmail" placeholder="Email" required>
+                    <label>Current Password</label>
+                    <input type="password" id="currentPassword" placeholder="Required to change password">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="New Password">
+                    <div class="modal-actions">
+                        <button type="button" class="cancel-btn" id="cancelProfileBtn">Cancel</button>
+                        <button type="submit" class="add-btn" id="saveProfileBtn">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `);
+
+    const accountMenu = document.getElementById("accountMenu");
+    const profileModal = document.getElementById("profileModal");
+    const profileForm = document.getElementById("profileForm");
+    const profileEmail = document.getElementById("profileEmail");
+
+    const toggleMenu = () => accountMenu.classList.toggle("hidden");
+    const openProfileModal = () => {
+        accountMenu.classList.add("hidden");
+        profileEmail.value = user?.email || "";
+        document.getElementById("currentPassword").value = "";
+        document.getElementById("newPassword").value = "";
+        profileModal.classList.add("active");
+        profileEmail.focus();
+    };
+    const closeProfileModal = () => profileModal.classList.remove("active");
+
+    avatar.addEventListener("click", toggleMenu);
+    avatar.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleMenu();
+        }
+    });
+    document.getElementById("changeProfileBtn").addEventListener("click", openProfileModal);
+    document.getElementById("cancelProfileBtn").addEventListener("click", closeProfileModal);
+    document.getElementById("closeProfileModalX").addEventListener("click", closeProfileModal);
+    profileModal.addEventListener("click", (event) => {
+        if (event.target === profileModal) closeProfileModal();
+    });
+    document.addEventListener("click", (event) => {
+        if (!accountMenu.contains(event.target) && event.target !== avatar) {
+            accountMenu.classList.add("hidden");
+        }
+    });
+
+    profileForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const payload = {
+            email: profileEmail.value.trim(),
+            currentPassword: document.getElementById("currentPassword").value,
+            newPassword: document.getElementById("newPassword").value,
+        };
+
+        if (!payload.email) {
+            showToast("Email is required", "error");
+            return;
+        }
+
+        if (payload.newPassword && !payload.currentPassword) {
+            showToast("Current password is required", "error");
+            return;
+        }
+
+        try {
+            const button = document.getElementById("saveProfileBtn");
+            button.disabled = true;
+            button.textContent = "Saving...";
+            const data = await apiRequest(`${AUTH_API_URL}/profile`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("currentUser", JSON.stringify(data.user));
+            closeProfileModal();
+            showToast("Account updated successfully");
+        } catch (error) {
+            showToast(error.message, "error");
+        } finally {
+            const button = document.getElementById("saveProfileBtn");
+            button.disabled = false;
+            button.textContent = "Save Changes";
+        }
+    });
+}
+
 async function logout(message = "Logout successful") {
     try {
         await apiRequest(`${AUTH_API_URL}/logout`, { method: "POST" });
@@ -529,16 +752,25 @@ async function apiDownload(url) {
 
 async function refreshDashboardData() {
     try {
-        const [analyticsResponse, productivityResponse] = await Promise.all([
+        const [analyticsResponse, productivityResponse, historyResponse, reminderResponse, activityResponse] = await Promise.all([
             apiRequest(ANALYTICS_API_URL),
             apiRequest(PRODUCTIVITY_API_URL),
+            apiRequest(`${HISTORY_API_URL}?range=${historyRange}&search=${encodeURIComponent(historySearch)}`),
+            apiRequest(REMINDERS_API_URL),
+            apiRequest(ACTIVITY_API_URL),
         ]);
 
         analyticsData = analyticsResponse.analytics;
         productivityData = productivityResponse.productivity;
+        historyData = historyResponse.tasks || [];
+        reminderData = reminderResponse.reminders || [];
+        activityData = activityResponse.logs || [];
     } catch (error) {
         analyticsData = buildLocalAnalytics(tasks);
         productivityData = buildLocalProductivity(tasks);
+        historyData = tasks.filter((task) => task.completed);
+        reminderData = tasks.filter((task) => !task.completed && task.reminderTime);
+        activityData = [];
     }
 }
 
@@ -553,6 +785,15 @@ function buildLocalAnalytics(sourceTasks) {
     const recurringTasks = sourceTasks.filter((task) => task.isRecurring).length;
     const recurringCompletions = sourceTasks.reduce((total, task) =>
         total + (task.isRecurring ? task.totalCompletions || 0 : 0), 0);
+    const todayStart = startOfToday();
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+    const todayTasks = sourceTasks.filter((task) =>
+        task.dueDateRaw && new Date(task.dueDateRaw) >= todayStart && new Date(task.dueDateRaw) <= todayEnd
+    ).length;
+    const upcomingReminders = sourceTasks.filter((task) =>
+        !task.completed && task.reminderTime && new Date(task.reminderTime) >= new Date()
+    ).length;
     const completionRate = sourceTasks.length
         ? Math.round((completedTasksCount / sourceTasks.length) * 100)
         : 0;
@@ -571,11 +812,15 @@ function buildLocalAnalytics(sourceTasks) {
         completedTasks: completedTasksCount,
         pendingTasks,
         overdueTasks: overdue,
+        todayTasks,
+        upcomingReminders,
         highPriorityTasks,
         recurringTasks,
         recurringCompletions,
         completionRate,
         highPriorityCompletionRate,
+        currentStreak: Math.max(0, ...sourceTasks.map((task) => task.streak || 0)),
+        bestStreak: Math.max(0, ...sourceTasks.map((task) => task.longestStreak || 0)),
         score,
         productivityLevel: getProductivityLevel(score),
         tasksByCategory: ["Work", "Study", "Personal", "Health"].reduce((payload, category) => {
@@ -636,6 +881,14 @@ function getProductivityLevel(score) {
 }
 
 function createDashboardModules() {
+    const sidebarMenu = document.querySelector(".sidebar-menu");
+    sidebarMenu.insertAdjacentHTML("beforeend", `
+        <div class="menu-item">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Task History</span>
+        </div>
+    `);
+
     const tasksSection = document.querySelector(".tasks-section");
     tasksSection.insertAdjacentHTML("afterend", `
         <section class="dashboard-module glass-card hidden" id="analyticsModule">
@@ -679,10 +932,52 @@ function createDashboardModules() {
                 <div class="insight-list" id="productivityInsights"></div>
             </div>
         </section>
+
+        <section class="dashboard-module glass-card hidden" id="historyModule">
+            <div class="module-header">
+                <h2>Task History</h2>
+                <span>Completed tasks stay here</span>
+            </div>
+            <div class="task-tools history-tools">
+                <input id="historySearchInput" type="search" placeholder="Search history">
+                <select id="historyRangeFilter" aria-label="Filter task history">
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+            </div>
+            <div class="report-preview" id="historyList"></div>
+            <div class="module-header compact-module-header">
+                <h2>Upcoming Tasks</h2>
+                <span>Pending deadlines</span>
+            </div>
+            <div class="report-preview" id="upcomingTaskList"></div>
+            <div class="module-header compact-module-header">
+                <h2>Upcoming Reminders</h2>
+                <span>Notification-ready schedule</span>
+            </div>
+            <div class="report-preview" id="reminderList"></div>
+            <div class="module-header compact-module-header">
+                <h2>Activity Log</h2>
+                <span>Recent task changes</span>
+            </div>
+            <div class="report-preview" id="activityLogList"></div>
+        </section>
     `);
 
     document.getElementById("csvExportBtn").addEventListener("click", () => downloadReport("csv"));
     document.getElementById("pdfExportBtn").addEventListener("click", () => downloadReport("pdf"));
+    document.getElementById("historySearchInput").addEventListener("input", debounce(async (event) => {
+        historySearch = event.target.value.trim();
+        await refreshDashboardData();
+        renderHistory();
+    }, 300));
+    document.getElementById("historyRangeFilter").addEventListener("change", async (event) => {
+        historyRange = event.target.value;
+        await refreshDashboardData();
+        renderHistory();
+    });
 }
 
 function bindSidebarMenu() {
@@ -725,6 +1020,12 @@ function showDashboardView(label) {
         return;
     }
 
+    if (label === "Task History") {
+        document.getElementById("historyModule").classList.remove("hidden");
+        renderHistory();
+        return;
+    }
+
     taskButton.classList.remove("hidden");
     taskSection.classList.remove("hidden");
     renderTasks(currentFilter);
@@ -734,6 +1035,7 @@ function renderDashboardModules() {
     renderAnalytics();
     renderProductivity();
     renderReportPreview();
+    renderHistory();
 }
 
 function renderAnalytics() {
@@ -743,6 +1045,10 @@ function renderAnalytics() {
         ["Completed Tasks", analytics.completedTasks],
         ["Pending Tasks", analytics.pendingTasks],
         ["Overdue Tasks", analytics.overdueTasks],
+        ["Today's Tasks", analytics.todayTasks || 0],
+        ["Reminders", analytics.upcomingReminders || 0],
+        ["Current Streak", `${analytics.currentStreak || 0} days`],
+        ["Best Streak", `${analytics.bestStreak || 0} days`],
         ["High Priority Tasks", analytics.highPriorityTasks],
         ["Routine Tasks", analytics.recurringTasks || 0],
         ["Completion", `${analytics.completionRate}%`],
@@ -793,7 +1099,51 @@ function renderProductivity() {
         `High-Priority Completion: ${productivity.highPriorityCompletionRate || 0}%`,
         `Overdue Tasks: ${productivity.overdueTasks || 0}`,
         `Routine Completions: ${productivity.recurringCompletions || 0}`,
+        `Current Streak: ${(analyticsData && analyticsData.currentStreak) || 0} days`,
+        `Best Streak: ${(analyticsData && analyticsData.bestStreak) || 0} days`,
     ].map((insight) => `<div class="insight-item">${escapeHTML(insight)}</div>`).join("");
+}
+
+function renderHistory() {
+    const historyList = document.getElementById("historyList");
+    const upcomingTaskList = document.getElementById("upcomingTaskList");
+    const reminderList = document.getElementById("reminderList");
+    const activityLogList = document.getElementById("activityLogList");
+
+    if (!historyList || !upcomingTaskList || !reminderList || !activityLogList) return;
+    const today = startOfToday();
+    const upcomingTasks = tasks
+        .filter((task) => !task.completed && task.dueDateRaw && new Date(task.dueDateRaw) >= today)
+        .sort((a, b) => new Date(a.dueDateRaw) - new Date(b.dueDateRaw))
+        .slice(0, 8);
+
+    historyList.innerHTML = historyData.map((task) => `
+        <div class="report-row">
+            <strong>${escapeHTML(task.title)}</strong>
+            <span>${escapeHTML(task.category || "Personal")} | ${escapeHTML(task.priority || "Medium")} | Completed ${escapeHTML(formatTaskDateTime(task.completedAt || task.lastCompletedAt))}</span>
+        </div>
+    `).join("") || `<div class="task-state">No completed tasks in this range.</div>`;
+
+    upcomingTaskList.innerHTML = upcomingTasks.map((task) => `
+        <div class="report-row">
+            <strong>${escapeHTML(task.title)}</strong>
+            <span>${escapeHTML(task.category || "Personal")} | ${escapeHTML(task.priority || "Medium")} | Due ${escapeHTML(formatTaskDate(task.dueDateRaw))}</span>
+        </div>
+    `).join("") || `<div class="task-state">No upcoming tasks.</div>`;
+
+    reminderList.innerHTML = reminderData.map((task) => `
+        <div class="report-row">
+            <strong>${escapeHTML(task.title)}</strong>
+            <span>${escapeHTML(task.category || "Personal")} | Reminder ${escapeHTML(formatTaskDateTime(task.reminderTime))}</span>
+        </div>
+    `).join("") || `<div class="task-state">No upcoming reminders.</div>`;
+
+    activityLogList.innerHTML = activityData.map((log) => `
+        <div class="activity-item">
+            <strong>${escapeHTML(log.action)}</strong>
+            <span>${escapeHTML(log.taskTitle || "Task")} | ${escapeHTML(formatTaskDateTime(log.createdAt))}</span>
+        </div>
+    `).join("") || `<div class="task-state">No activity logged yet.</div>`;
 }
 
 function renderReportPreview() {
@@ -848,6 +1198,7 @@ function createTaskControls() {
             <option value="Pending">Pending</option>
             <option value="Completed">Completed</option>
         </select>
+        <input id="dueDateFilter" type="date" aria-label="Filter by due date">
         <select id="sortFilter" aria-label="Sort tasks">
             <option value="created-desc">Newest Created</option>
             <option value="date-asc">Due Date Asc</option>
@@ -876,6 +1227,11 @@ function createTaskControls() {
 
     document.getElementById("statusFilter").addEventListener("change", (event) => {
         statusFilter = event.target.value;
+        renderTasks(currentFilter);
+    });
+
+    document.getElementById("dueDateFilter").addEventListener("change", (event) => {
+        dueDateFilter = event.target.value;
         renderTasks(currentFilter);
     });
 
@@ -1138,14 +1494,18 @@ function renderSuggestions(suggestions) {
 
 function closeTaskModal() {
     taskModal.classList.remove("active");
+    editingTaskId = null;
+    taskModalTitle.textContent = "Add New Task";
+    taskSubmitButton.textContent = "Add Task";
     const suggestionBox = document.getElementById("suggestionBox");
     if (suggestionBox) suggestionBox.classList.remove("active");
 }
 
 function setFormLoading(isLoading) {
-    const submitButton = taskForm.querySelector(".add-btn");
-    submitButton.disabled = isLoading;
-    submitButton.textContent = isLoading ? "Adding..." : "Add Task";
+    taskSubmitButton.disabled = isLoading;
+    taskSubmitButton.textContent = isLoading
+        ? (editingTaskId ? "Updating..." : "Adding...")
+        : (editingTaskId ? "Update Task" : "Add Task");
 }
 
 function showTaskState(message) {
@@ -1183,6 +1543,7 @@ function debounce(callback, delay) {
 
 window.toggleTask = toggleTask;
 window.deleteTask = deleteTask;
+window.editTask = editTask;
 window.searchTasks = (value = "") => {
     searchTerm = value;
     loadTasks();

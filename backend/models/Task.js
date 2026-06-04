@@ -52,8 +52,9 @@ const taskSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["Work", "Study", "Personal", "Health"],
       default: "Personal",
+      trim: true,
+      maxlength: 40,
     },
     dueDate: {
       type: Date,
@@ -62,6 +63,11 @@ const taskSchema = new mongoose.Schema(
     completedAt: {
       type: Date,
       default: null,
+    },
+    recurring: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     isRecurring: {
       type: Boolean,
@@ -92,6 +98,16 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    reminderTime: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
     completionHistory: {
       type: [completionHistorySchema],
       default: [],
@@ -101,5 +117,9 @@ const taskSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+taskSchema.index({ userId: 1, status: 1, deletedAt: 1, dueDate: 1 });
+taskSchema.index({ userId: 1, completedAt: -1 });
+taskSchema.index({ userId: 1, category: 1, priority: 1 });
 
 module.exports = mongoose.model("Task", taskSchema);
